@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Новая запись</title>
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #ffffff;
+    color: #1a1a1a;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+  }
+
+  h1 {
+    color: #0b2a5b; /* тёмно-синий */
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+  }
+
+  .subtitle {
+    color: #7fb6d9; /* нежно-голубой вместо серого */
+    font-size: 15px;
+    margin-bottom: 28px;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 300px;
+    border: 1px solid #dceaf4;
+    border-radius: 8px;
+    padding: 16px 18px;
+    font-size: 17px;
+    font-family: inherit;
+    color: #1a1a1a;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    background: #ffffff;
+  }
+
+  textarea:focus {
+    border-color: #0b2a5b;
+    box-shadow: 0 0 0 3px rgba(11, 42, 91, 0.08);
+  }
+
+  textarea::placeholder {
+    color: #a9cde4; /* тоже нежно-голубой */
+  }
+
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  button {
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 12px 26px;
+    border-radius: 10px; /* квадратные с закруглёнными краями */
+    border: none;
+    cursor: pointer;
+    transition: background 0.18s ease, transform 0.06s ease;
+  }
+
+  .btn-save {
+    background: #0b2a5b;
+    color: #ffffff;
+  }
+
+  .btn-save:hover {
+    background: #0f3670;
+  }
+
+  .btn-save:active {
+    transform: scale(0.98);
+  }
+
+  .btn-cancel {
+    background: #eef6fb;   /* светло-голубая подложка */
+    color: #2b6a94;
+  }
+
+  .btn-cancel:hover {
+    background: #e2f0f9;
+  }
+
+  /* ---- строка со ссылкой ---- */
+  .link-row {
+    display: none;
+    margin-top: 22px;
+    padding: 14px 16px;
+    border: 1px solid #dceaf4;
+    border-radius: 10px;
+    background: #f7fbfe;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .link-row.show {
+    display: flex;
+  }
+
+  .link-row .link-label {
+    color: #7fb6d9;        /* нежно-голубой текст */
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  .link-row a {
+    color: #0b2a5b;
+    font-size: 14px;
+    text-decoration: none;
+    word-break: break-all;
+    flex: 1;
+  }
+
+  .link-row a:hover {
+    text-decoration: underline;
+  }
+
+  .btn-copy {
+    background: #0b2a5b;
+    color: #ffffff;
+    padding: 9px 18px;
+    font-size: 14px;
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+
+  .btn-copy:hover {
+    background: #0f3670;
+  }
+
+  .status {
+    margin-top: 12px;
+    font-size: 14px;
+    color: #2e7d32;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    text-align: right;
+  }
+
+  .status.show {
+    opacity: 1;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>Новая запись</h1>
+    <p class="subtitle">Напишите что-нибудь и нажмите «Сохранить»</p>
+
+    <form id="noteForm">
+      <textarea id="noteText" placeholder="Введите текст…"></textarea>
+
+      <div class="actions">
+        <button type="button" class="btn-cancel" id="cancelBtn">Отмена</button>
+        <button type="submit" class="btn-save">Сохранить</button>
+      </div>
+
+      <!-- строка «Скопировать ссылку» -->
+      <div class="link-row" id="linkRow">
+        <span class="link-label">Ссылка</span>
+        <a id="linkAnchor" href="#" target="_blank" rel="noopener"></a>
+        <button type="button" class="btn-copy" id="copyBtn">Скопировать ссылку</button>
+      </div>
+
+      <div class="status" id="status"></div>
+    </form>
+  </div>
+
+<script>
+  /* ======== НАСТРОЙКИ JSONBIN ======== */
+  const API_KEY = 'ВАШ_X_MASTER_KEY';   // вставьте сюда ваш X-Master-Key
+  const BIN_ID  = 'ВАШ_BIN_ID';         // и ID вашей «корзины»
+  const API_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+  /* =================================== */
+
+  const form       = document.getElementById('noteForm');
+  const textarea   = document.getElementById('noteText');
+  const status     = document.getElementById('status');
+  const cancelBtn  = document.getElementById('cancelBtn');
+  const linkRow    = document.getElementById('linkRow');
+  const linkAnchor = document.getElementById('linkAnchor');
+  const copyBtn    = document.getElementById('copyBtn');
+
+  function showStatus(msg, ok = true) {
+    status.textContent = msg;
+    status.style.color = ok ? '#2e7d32' : '#c62828';
+    status.classList.add('show');
+    clearTimeout(showStatus._t);
+    showStatus._t = setTimeout(() => status.classList.remove('show'), 2500);
+  }
+
+  function makeId(len = 8) {
+    const chars = 'abcdefghijkmnpqrstuvwxyz23456789';
+    const arr = new Uint32Array(len);
+    crypto.getRandomValues(arr);
+    return [...arr].map(n => chars[n % chars.length]).join('');
+  }
+
+  // читаем «базу» записей из bin (объект { id: {text, created} })
+  async function fetchStore() {
+    const res = await fetch(API_URL + '/latest', {
+      headers: { 'X-Master-Key': API_KEY }
+    });
+    const data = await res.json();
+    return data.record || {};
+  }
+
+  // пишем «базу» обратно
+  async function saveStore(store) {
+    await fetch(API_URL, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Master-Key': API_KEY
+      },
+      body: JSON.stringify(store)
+    });
+  }
+
+  // ---- сохранение ----
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = textarea.value.trim();
+    if (!text) { showStatus('Введите текст перед сохранением', false); return; }
+
+    const id = makeId(8);
+
+    try {
+      showStatus('Сохраняем…');
+      const store = await fetchStore();
+      store[id] = { text, created: Date.now() };
+      await saveStore(store);
+
+      const url = new URL(window.location.href);
+      url.search = '';
+      url.hash = '';
+      url.searchParams.set('id', id);
+
+      linkAnchor.textContent = url.toString();
+      linkAnchor.href = url.toString();
+      linkRow.classList.add('show');
+      showStatus('Текст сохранён ✓');
+    } catch (err) {
+      console.error(err);
+      showStatus('Ошибка сохранения', false);
+    }
+  });
+
+  // ---- копирование ссылки ----
+  copyBtn.addEventListener('click', async () => {
+    const link = linkAnchor.href;
+    if (!link || link === '#') return;
+    try {
+      await navigator.clipboard.writeText(link);
+      showStatus('Ссылка скопирована ✓');
+    } catch {
+      const tmp = document.createElement('input');
+      tmp.value = link;
+      document.body.appendChild(tmp);
+      tmp.select();
+      document.execCommand('copy');
+      tmp.remove();
+      showStatus('Ссылка скопирована ✓');
+    }
+  });
+
+  // ---- отмена ----
+  cancelBtn.addEventListener('click', () => {
+    textarea.value = '';
+    linkRow.classList.remove('show');
+    status.classList.remove('show');
+    textarea.focus();
+  });
+
+  // ---- загрузка по ?id= ----
+  (async function loadFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    if (!id) return;
+
+    try {
+      const store = await fetchStore();
+      const rec = store[id];
+      if (!rec) { showStatus('Запись не найдена', false); return; }
+
+      textarea.value = rec.text;
+      const url = new URL(window.location.href);
+      linkAnchor.textContent = url.toString();
+      linkAnchor.href = url.toString();
+      linkRow.classList.add('show');
+      showStatus('Запись загружена');
+    } catch (err) {
+      console.error(err);
+      showStatus('Не удалось прочитать запись', false);
+    }
+  })();
+</script>
+</body>
+</html>
